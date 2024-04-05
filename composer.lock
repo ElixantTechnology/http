@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c46d685680bd4a48e225c7042a8cb89e",
+    "content-hash": "7c23c10c3e1c3dfd4aec14a4e3d97dd1",
     "packages": [
         {
             "name": "brick/math",
@@ -559,6 +559,43 @@
                 }
             ],
             "time": "2023-10-06T06:47:41+00:00"
+        },
+        {
+            "name": "elixant/service-container",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../Container",
+                "reference": "a755076fff819a5d4b9c7686bc7938474763c4d9"
+            },
+            "require": {
+                "elixant/utility": "@dev",
+                "illuminate/container": "^11.0",
+                "php": "^8.2|^8.3"
+            },
+            "require-dev": {
+                "laravel/framework": "^11.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Elixant\\ServiceContainer\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alexander Schmautz",
+                    "email": "a.schmautz91@gmail.com"
+                }
+            ],
+            "description": "IoC Service Container Implementation with Built-In Method of Defining Services.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "elixant/utility",
@@ -7469,7 +7506,8 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "elixant/utility": 20
+        "elixant/utility": 20,
+        "elixant/service-container": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,

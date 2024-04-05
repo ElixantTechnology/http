@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="com.free2one.accessor.settings.AccessorSettings">
+    <option name="proxyRootDirectory" value="$PROJECT_DIR$/.php-accessor" />
+    <option name="extraProxyDirectories">
+      <array>
+        <option value="$PROJECT_DIR$/runtime" />
+      </array>
+    </option>
+  </component>
+</project>

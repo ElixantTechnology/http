@@ -1,9 +1,11 @@
 <?php
 /**
- * Elixant Platform Framework Component
+ * Elixant Framework
  *
- * Elixant Platform
- * Copyright (c) 2023 Elixant Corporation.
+ * Elixant Framework is an extremely powerful, however easy-to-use
+ * PHP-Baswed Application Development Framework that was created
+ * as means to form a foundation of which all of Elixant's platforms
+ * would be built on top of.
  *
  * Permission is hereby granted, free of charge, to any
  * person obtaining a copy of this software and associated
@@ -18,10 +20,11 @@
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
  *
  * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
- * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
- * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
- * USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
  *
+ * @package      Elixant Framework
  * @copyright    2023 (C) Elixant Corporation.
  * @license      MIT License
  * @author       Alexander Schmautz <a.schmautz@outlook.com>
@@ -29,50 +32,56 @@
 declare(strict_types = 1);
 namespace Elixant\HTTP;
 
-use ArrayAccess;
-use Elixant\Utility\Str;
+require_once dirname(__DIR__) . '/vendor/autoload.php';
+
+use Closure;
+use Override;
+use RuntimeException;
 use Elixant\Utility\Arr;
+use Elixant\Utility\IPAddress;
+use Symfony\Component\VarDumper\VarDumper;
 use Elixant\HTTP\Concerns\InteractsWithInput;
 use Symfony\Component\HttpFoundation\InputBag;
-use Elixant\HTTP\Concerns\InteractsWithContentTypes;
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
- * Representation of an incoming, server-side HTTP request.
- *
- * @package         Elixant\HTTP\Request
- * @class           Request
- * @version         GitHub: $Id$
+ * @package         Elixant/HTTP
  * @copyright       2024 (c) Elixant Corporation.
  * @license         MIT License
  * @author          Alexander M. Schmautz <a.schmautz91@gmail.com>
- * @since           Apr 05, 2024
- *
- * @method array validate(array $rules, ...$params)
- * @method array validateWithBag(string $errorBag, array $rules, ...$params)
- * @method bool hasValidSignature(bool $absolute = true)
+ * @class
  */
-class Request extends SymfonyRequest implements ArrayAccess
+class Request extends SymfonyRequest
 {
-    use InteractsWithInput,
-        InteractsWithContentTypes;
-    protected ?InputBag $json;
-    protected array $convertedFiles = [];
+    use InteractsWithInput;
+    
+    protected ?string $json;
     
     /**
-     * Return the Request instance.
-     *
-     * @return $this
+     * @var \Elixant\Utility\IPAddress|null The client's IP address or null if not available.
      */
-    public function instance(): static
+    private ?IPAddress $ip;
+    
+    /**
+     * Captures the current request.
+     *
+     * The static method `capture` enables the HTTP method parameter override and creates a new instance of the current
+     * request based on the global variables.
+     *
+     * @return static The captured request instance.
+     */
+    public static function capture(): static
     {
-        return $this;
+        static::enableHttpMethodParameterOverride();
+        
+        return static::createFromGlobals();
     }
     
     /**
-     * Get the request method.
+     * Retrieves the method.
      *
-     * @return string
+     * @return string The method.
      */
     public function method(): string
     {
@@ -80,19 +89,19 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Get the root URL for the application.
+     * Returns the root URL of the application.
      *
-     * @return string
+     * @return string The root URL of the application without trailing slashes.
      */
     public function root(): string
     {
-        return rtrim($this->getSchemeAndHttpHost().$this->getBaseUrl(), '/');
+        return rtrim($this->getSchemeAndHttpHost() . $this->getBaseUrl(), '/');
     }
     
     /**
-     * Get the URL (no query string) for the request.
+     * Returns the URL of the current request.
      *
-     * @return string
+     * @return string The URL of the current request without any query string parameters.
      */
     public function url(): string
     {
@@ -100,56 +109,48 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Get the full URL for the request.
+     * Returns the full URL of the current request.
      *
-     * @return string
+     * @return string The full URL of the current request.
      */
     public function fullUrl(): string
     {
         $query = $this->getQueryString();
+        $question = $this->getBaseUrl() . $this->getPathInfo() === '/' ? '/?' : '?';
         
-        $question = $this->getBaseUrl().$this->getPathInfo() === '/' ? '/?' : '?';
-        
-        return $query ? $this->url().$question.$query : $this->url();
+        return $query ? $this->url() . $question . $query : $this->url();
     }
     
     /**
-     * Get the full URL for the request with the added query string parameters.
+     * Returns the full URL of the application with query parameters added.
      *
-     * @param  array  $query
-     * @return string
+     * @param array $query The query parameters to add to the URL.
+     *
+     * @return string The full URL of the application with query parameters.
      */
     public function fullUrlWithQuery(array $query): string
     {
-        $question = $this->getBaseUrl().$this->getPathInfo() === '/' ? '/?' : '?';
+        $question = $this->getBaseUrl() . $this->getPathInfo() === '/' ? '/?' : '?';
         
         return count($this->query()) > 0
-            ? $this->url().$question.Arr::query(array_merge($this->query(), $query))
-            : $this->fullUrl().$question.Arr::query($query);
+            ? $this->url() . $question . Arr::query(array_merge($this->query(), $query))
+            : $this->fullUrl() . $question . Arr::query($query);
     }
     
-    /**
-     * Get the full URL for the request without the given query string parameters.
-     *
-     * @param array|string $keys
-     *
-     * @return string
-     */
-    public function fullUrlWithoutQuery(array|string $keys): string
+    public function fullUrlWithoutQuery($keys): string
     {
         $query = Arr::except($this->query(), $keys);
-        
-        $question = $this->getBaseUrl().$this->getPathInfo() === '/' ? '/?' : '?';
+        $question = $this->getBaseUrl() . $this->getPathInfo() === '/' ? '/?' : '?';
         
         return count($query) > 0
-            ? $this->url().$question.Arr::query($query)
+            ? $this->url() . $question . Arr::query($query)
             : $this->url();
     }
     
     /**
-     * Get the current path info for the request.
+     * Returns the path of the current request.
      *
-     * @return string
+     * @return string The path of the current request without leading or trailing slashes.
      */
     public function path(): string
     {
@@ -159,9 +160,9 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Get the current decoded path info for the request.
+     * Returns the decoded path of the current request.
      *
-     * @return string
+     * @return string The decoded path of the current request.
      */
     public function decodedPath(): string
     {
@@ -169,22 +170,25 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Get a segment from the URI (1 based index).
+     * Returns the segment at the given index from the URL path.
      *
-     * @param int         $index
-     * @param string|null $default
+     * If the segment at the given index does not exist, it will return the default value provided.
+     * The index is 1-based, so the first segment is at index 1.
      *
-     * @return string|null
+     * @param int   $index   The index of the segment to retrieve.
+     * @param mixed $default The default value to return if the segment does not exist. Defaults to null.
+     *
+     * @return string
      */
-    public function segment(int $index, string $default = null): ?string
+    public function segment(int $index, ?string $default = null): string
     {
         return Arr::get($this->segments(), $index - 1, $default);
     }
     
     /**
-     * Get all the segments for the request path.
+     * Returns an array of segments from the URL path.
      *
-     * @return array
+     * @return array An array containing the segments from the URL path.
      */
     public function segments(): array
     {
@@ -196,35 +200,9 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Determine if the current request URI matches a pattern.
+     * Returns the host of the application.
      *
-     * @param  mixed  ...$patterns
-     * @return bool
-     */
-    public function is(...$patterns): bool
-    {
-        $path = $this->decodedPath();
-        
-        return collect($patterns)->contains(fn ($pattern) => Str::is($pattern, $path));
-    }
-    
-    /**
-     * Determine if the current request URL and query string match a pattern.
-     *
-     * @param  mixed  ...$patterns
-     * @return bool
-     */
-    public function fullUrlIs(...$patterns): bool
-    {
-        $url = $this->fullUrl();
-        
-        return collect($patterns)->contains(fn ($pattern) => Str::is($pattern, $url));
-    }
-    
-    /**
-     * Get the host name.
-     *
-     * @return string
+     * @return string The host of the application.
      */
     public function host(): string
     {
@@ -232,9 +210,9 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Get the HTTP host being requested.
+     * Returns the HTTP host of the application.
      *
-     * @return string
+     * @return string The HTTP host of the application.
      */
     public function httpHost(): string
     {
@@ -242,9 +220,9 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Get the scheme and HTTP host.
+     * Returns the scheme and HTTP host of the application.
      *
-     * @return string
+     * @return string The scheme and HTTP host of the application.
      */
     public function schemeAndHttpHost(): string
     {
@@ -252,9 +230,10 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Determine if the request is the result of an AJAX call.
+     * Determines if the request is an AJAX request.
      *
      * @return bool
+     *   True if the request is an AJAX request, false otherwise.
      */
     public function ajax(): bool
     {
@@ -262,9 +241,9 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Determine if the request is the result of a PJAX call.
+     * Returns true if the request is a PJAX request, false otherwise.
      *
-     * @return bool
+     * @return bool True if the request is a PJAX request, false otherwise.
      */
     public function pjax(): bool
     {
@@ -272,21 +251,21 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Determine if the request is the result of a prefetch call.
+     * Checks if the request is a prefetch request.
      *
-     * @return bool
+     * @return bool Indicates if the request is a prefetch request.
      */
     public function prefetch(): bool
     {
-        return strcasecmp($this->server->get('HTTP_X_MOZ') ?? '', 'prefetch') === 0 ||
-               strcasecmp($this->headers->get('Purpose') ?? '', 'prefetch') === 0 ||
-               strcasecmp($this->headers->get('Sec-Purpose') ?? '', 'prefetch') === 0;
+        return strcasecmp($this->server->get('HTTP_X_MOZ') ?? '', 'prefetch') === 0
+               || strcasecmp($this->headers->get('Purpose') ?? '', 'prefetch') === 0
+               || strcasecmp($this->headers->get('Sec-Purpose') ?? '', 'prefetch') === 0;
     }
     
     /**
-     * Determine if the request is over HTTPS.
+     * Returns whether the application is running in a secure mode.
      *
-     * @return bool
+     * @return bool Whether the application is running in a secure mode.
      */
     public function secure(): bool
     {
@@ -294,46 +273,99 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Get the client user agent.
+     * {@inheritdoc}
      *
-     * @return string|null
+     * Override the getClientIps method to return an array of IPAddress objects.
+     *
+     * @return array An array of IPAddress objects representing the client IPs.
+     *
+     * @throws \Darsyn\IP\Exception\InvalidIpAddressException
+     * @throws \Darsyn\IP\Exception\WrongVersionException
      */
-    public function userAgent(): ?string
+    #[Override]
+    public function getClientIps(): array
+    {
+        $ips = $this->getClientIps();
+        foreach ($ips as $i => $ip) {
+            $ips[$i] = IPAddress::factory($ip);
+        }
+        
+        return $ips;
+    }
+    
+    /**
+     * Returns the IP address of the client.
+     *
+     * @return IPAddress The IP address of the client.
+     *
+     * @throws \Darsyn\IP\Exception\InvalidIpAddressException
+     * @throws \Darsyn\IP\Exception\WrongVersionException
+     */
+    public function ip(): IPAddress
+    {
+        return ($this->getClientIps())[0];
+    }
+    
+    /**
+     * Returns the User-Agent header value.
+     *
+     * @return string The User-Agent header value.
+     */
+    public function userAgent(): string
     {
         return $this->headers->get('User-Agent');
     }
     
     /**
-     * Merge new input into the current request's input array.
+     * Returns the input source for the request.
      *
-     * @param  array  $input
-     * @return $this
+     * The input source is determined based on the HTTP method used in the request. If the HTTP method is either 'GET'
+     * or 'HEAD', the request's query parameters are considered as the input source. Otherwise, the request's body
+     * parameters are considered as the input source.
+     *
+     * @return InputBag The input source for the request, which is an instance of InputBag.
      */
-    public function merge(array $input): static
+    public function getInputSource(): InputBag
     {
-        $this->getInputSource()->add($input);
+        return in_array($this->getRealMethod(), ['GET', 'HEAD']) ? $this->query : $this->request;
+    }
+    
+    /**
+     * Converts the object to an array.
+     *
+     * @return array The object converted to an array.
+     */
+    public function toArray(): array
+    {
+        return $this->all();
+    }
+    
+    /**
+     * Returns the session of the application.
+     *
+     * @return \Closure|\Symfony\Component\HttpFoundation\Session\SessionInterface|null The session of the application
+     *                                                                                  if present, a Closure callback
+     *                                                                                  if the session is not set, or
+     *                                                                                  null if the session is not
+     *                                                                                  available.
+     *
+     * @throws \RuntimeException Thrown if the session store is not set on the request.
+     */
+    public function session(): Closure|SessionInterface|null
+    {
+        if ( ! $this->hasSession()) {
+            throw new RuntimeException('Session store not set on request.');
+        }
         
-        return $this;
+        return $this->session;
     }
     
     /**
-     * Merge new input into the request's input, but only when that key is missing from the request.
+     * Replaces the input source with the given array.
      *
-     * @param  array  $input
-     * @return $this
-     */
-    public function mergeIfMissing(array $input): static
-    {
-        return $this->merge(collect($input)->filter(
-            fn($value, $key) => $this->missing($key)
-        )->toArray());
-    }
-    
-    /**
-     * Replace the input for the current request.
+     * @param array $input The array to replace the input source with.
      *
-     * @param  array  $input
-     * @return $this
+     * @return static The instance of the object.
      */
     public function replace(array $input): static
     {
@@ -342,96 +374,22 @@ class Request extends SymfonyRequest implements ArrayAccess
         return $this;
     }
     
-    public function json($key = null, $default = null)
-    {
-        if (! isset($this->json)) {
-            $this->json = new InputBag((array) json_decode($this->getContent(), true));
-        }
-        
-        if (is_null($key)) {
-            return $this->json;
-        }
-        
-        return data_get($this->json->all(), $key, $default);
-    }
-    
-    protected function getInputSource()
-    {
-        if ($this->isJson()) {
-            return $this->json();
-        }
-        
-        return in_array($this->getRealMethod(), ['GET', 'HEAD']) ? $this->query : $this->request;
-    }
-    
-    public static function createFrom(self $from, $to = null)
-    {
-        $request = $to ?: new static;
-        
-        $files = array_filter($from->files->all());
-        
-        $request->initialize(
-            $from->query->all(),
-            $from->request->all(),
-            $from->attributes->all(),
-            $from->cookies->all(),
-            $files,
-            $from->server->all(),
-            $from->getContent()
-        );
-        
-        $request->headers->replace($from->headers->all());
-        
-        $request->setRequestLocale($from->getLocale());
-        
-        $request->setDefaultRequestLocale($from->getDefaultLocale());
-        
-        $request->setJson($from->json());
-        
-        return $request;
-    }
-    
     /**
-     * Create an Illuminate request from a Symfony instance.
+     * Filters the files array recursively.
      *
-     * @param  \Symfony\Component\HttpFoundation\Request  $request
-     * @return static
-     */
-    public static function createFromBase(SymfonyRequest $request): static
-    {
-        $newRequest = new static(
-            $request->query->all(), $request->request->all(), $request->attributes->all(),
-            $request->cookies->all(), (new static)->filterFiles($request->files->all()) ?? [], $request->server->all()
-        );
-        
-        $newRequest->headers->replace($request->headers->all());
-        
-        $newRequest->content = $request->content;
-        
-        if ($newRequest->isJson()) {
-            $newRequest->request = $newRequest->json();
-        }
-        
-        return $newRequest;
-    }
-    
-    /**
-     * Filter the given array of files, removing any empty values.
+     * @param array $files The array of files to filter.
      *
-     * @param  mixed  $files
-     * @return mixed
+     * @return array|null The filtered files array.
      */
-    protected function filterFiles(mixed $files): array
+    protected function filterFiles(array $files): ?array
     {
-        if (! $files) {
-            return [];
+        if ( ! $files) {
+            return null;
         }
-        
-        foreach ($files as $key => $file) {
-            if (is_array($file)) {
-                $files[$key] = $this->filterFiles($file);
+        foreach ($files as $key => $data) {
+            if (is_array($data)) {
+                $files[$key] = $this->filterFiles(files: $data);
             }
-            
             if (empty($files[$key])) {
                 unset($files[$key]);
             }
@@ -441,9 +399,10 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Set the locale for the request instance.
+     * Sets the request locale.
      *
-     * @param  string  $locale
+     * @param string $locale The locale to set for the request.
+     *
      * @return void
      */
     public function setRequestLocale(string $locale): void
@@ -452,9 +411,10 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Set the default locale for the request instance.
+     * Sets the default request locale for the application.
      *
-     * @param  string  $locale
+     * @param string $locale The default request locale to set.
+     *
      * @return void
      */
     public function setDefaultRequestLocale(string $locale): void
@@ -463,95 +423,18 @@ class Request extends SymfonyRequest implements ArrayAccess
     }
     
     /**
-     * Set the JSON payload for the request.
+     * Sets the JSON data.
      *
-     * @param  \Symfony\Component\HttpFoundation\InputBag  $json
-     * @return $this
+     * @param mixed $json The JSON data to set.
+     *
+     * @return static The updated instance of the class.
      */
-    public function setJson($json): static
+    public function setJson(string $json): static
     {
         $this->json = $json;
         
         return $this;
     }
-    
-    /**
-     * Get all the input and files for the request.
-     *
-     * @return array
-     */
-    public function toArray(): array
-    {
-        return $this->all();
-    }
-    
-    /**
-     * Determine if the given offset exists.
-     *
-     * @param  string  $offset
-     * @return bool
-     */
-    public function offsetExists($offset): bool
-    {
-        return Arr::has(
-            $this->all(),
-            $offset
-        );
-    }
-    
-    /**
-     * Get the value at the given offset.
-     *
-     * @param  string  $offset
-     * @return mixed
-     */
-    public function offsetGet($offset): mixed
-    {
-        return $this->__get($offset);
-    }
-    
-    /**
-     * Set the value at the given offset.
-     *
-     * @param  string  $offset
-     * @param  mixed  $value
-     * @return void
-     */
-    public function offsetSet($offset, $value): void
-    {
-        $this->getInputSource()->set($offset, $value);
-    }
-    
-    /**
-     * Remove the value at the given offset.
-     *
-     * @param  string  $offset
-     * @return void
-     */
-    public function offsetUnset($offset): void
-    {
-        $this->getInputSource()->remove($offset);
-    }
-    
-    /**
-     * Check if an input element is set on the request.
-     *
-     * @param  string  $key
-     * @return bool
-     */
-    public function __isset($key)
-    {
-        return ! is_null($this->__get($key));
-    }
-    
-    /**
-     * Get an input element from the request.
-     *
-     * @param  string  $key
-     * @return mixed
-     */
-    public function __get($key)
-    {
-        return Arr::get($this->all(), $key);
-    }
 }
+
+VarDumper::dump(Request::capture());

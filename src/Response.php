@@ -1,9 +1,11 @@
 <?php
 /**
- * Elixant Platform Framework Component
+ * Elixant Framework
  *
- * Elixant Platform
- * Copyright (c) 2023 Elixant Corporation.
+ * Elixant Framework is an extremely powerful, however easy-to-use
+ * PHP-Baswed Application Development Framework that was created
+ * as means to form a foundation of which all of Elixant's platforms
+ * would be built on top of.
  *
  * Permission is hereby granted, free of charge, to any
  * person obtaining a copy of this software and associated
@@ -18,10 +20,11 @@
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
  *
  * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
- * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
- * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
- * USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
  *
+ * @package      Elixant Framework
  * @copyright    2023 (C) Elixant Corporation.
  * @license      MIT License
  * @author       Alexander Schmautz <a.schmautz@outlook.com>
@@ -29,9 +32,17 @@
 declare(strict_types = 1);
 namespace Elixant\HTTP;
 
-use Symfony\Component\HttpFoundation\File\File as SymfonyFile;
+use Elixant\HTTP\Concerns\InteractsWithInput;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
-class File extends SymfonyFile
+/**
+ * @package         Elixant/HTTP
+ * @copyright       2024 (c) Elixant Corporation.
+ * @license         MIT License
+ * @author          Alexander M. Schmautz <a.schmautz91@gmail.com>
+ * @class
+ */
+class Response extends SymfonyResponse
 {
-    use FileHelpers;
+    use InteractsWithInput;
 }

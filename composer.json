@@ -10,14 +10,22 @@
   ],
   "prefer-stable": true,
   "require":       {
-    "php":                     "^8.2",
-    "elixant/utility": "@dev",
-    "symfony/http-foundation": "^7.0",
-    "elixant/service-container": "@dev"
+    "php":                     "^8.3",
+    "ext-json":                "*",
+    "ext-openssl":             "*",
+    "elixant/utility":         "@dev",
+    "elixant/di":              "@dev",
+    "darsyn/ip": "^5"
   },
   "require-dev":   {
-    "phpunit/phpunit":     "^9.5",
-    "mockery/mockery":       "^1.4"
+    "phpunit/phpunit": "^9.5",
+    "mockery/mockery": "^1.4",
+    "symfony/http-foundation": "^7.0",
+    "symfony/mime":            "^7.0",
+    "illuminate/http": "^11",
+    "php-extended/php-http-message-psr7": "7.0.2",
+    "codeigniter4/framework": "v4.5.3",
+    "laminas/laminas-diactoros": "^3.3.0"
   },
   "autoload":      {
     "psr-4": {
